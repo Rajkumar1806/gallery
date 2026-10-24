@@ -1,51 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:photo_manager/photo_manager.dart';
-
-import 'data/gallery_scope.dart';
-import 'data/media_repository.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'screens/home_shell.dart';
-import 'theme.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    systemNavigationBarColor: Colors.transparent,
-  ));
   runApp(const GalleryApp());
 }
 
-class GalleryApp extends StatefulWidget {
+class GalleryApp extends StatelessWidget {
   const GalleryApp({super.key});
 
   @override
-  State<GalleryApp> createState() => _GalleryAppState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Gallery',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const PermissionGate(child: HomeShell()),
+    );
+  }
 }
 
-class _GalleryAppState extends State<GalleryApp> {
-  final repo = MediaRepository();
+class PermissionGate extends StatefulWidget {
+  final Widget child;
+  const PermissionGate({super.key, required this.child});
 
   @override
-  void dispose() {
-    repo.dispose();
-    super.dispose();
+  State<PermissionGate> createState() => _PermissionGateState();
+}
+
+class _PermissionGateState extends State<PermissionGate> {
+  @override
+  void initState() {
+    super.initState();
+    _requestPermissions();
+  }
+
+  Future<void> _requestPermissions() async {
+    await Permission.photos.request();
+    await Permission.storage.request();
   }
 
   @override
   Widget build(BuildContext context) {
-    return GalleryScope(
-      repo: repo,
-      child: MaterialApp(
-        title: 'Gallery',
-        debugShowCheckedModeBanner: false,
-        theme: buildTheme(Brightness.light),
-        darkTheme: buildTheme(Brightness.dark),
-        themeMode: ThemeMode.system,
-        home: const PermissionGate(),
-      ),
-    );
+    return widget.child;
   }
 }
 

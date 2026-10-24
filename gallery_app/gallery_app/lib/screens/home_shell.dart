@@ -1,18 +1,7 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-
-import '../data/gallery_scope.dart';
-import '../theme.dart';
-import '../widgets/common.dart';
-import 'albums_screen.dart';
-import 'explore_screen.dart';
-import 'photos_screen.dart';
-import 'search_screen.dart';
-
-/// Space reserved for the floating search bar and bottom navigation.
-class ShellInsets {
-  static double top(BuildContext c) => MediaQuery.paddingOf(c).top + 74;
-  static double bottom(BuildContext c) => MediaQuery.paddingOf(c).bottom + 76;
-}
+import 'package:photo_manager/photo_manager.dart';
+import '../data/media_repository.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -22,162 +11,56 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  int _tab = 0;
+  final MediaRepository _repository = MediaRepository();
+  List<AssetEntity> _images = [];
+  bool _isLoading = true;
 
   @override
-  Widget build(BuildContext context) {
-    final repo = GalleryScope.of(context);
-    final pad = MediaQuery.paddingOf(context);
-
-    return PopScope(
-      canPop: _tab == 0,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) setState(() => _tab = 0);
-      },
-      child: Scaffold(
-        body: GradientBackground(
-          child: Stack(
-            children: [
-              if (!repo.loaded)
-                const Center(child: CircularProgressIndicator())
-              else
-                IndexedStack(
-                  index: _tab,
-                  children: const [PhotosScreen(), AlbumsScreen(), ExploreScreen()],
-                ),
-
-              // Floating search bar
-              Positioned(
-                top: pad.top + 10,
-                left: 16,
-                right: 6,
-                child: Row(children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const SearchScreen())),
-                      child: Glass(
-                        radius: 26,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                        child: Row(children: [
-                          Icon(Icons.search,
-                              color: GalleryColors.subtle(Theme.of(context).brightness)),
-                          const SizedBox(width: 12),
-                          Text('Times, places, file names…',
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  color: GalleryColors.subtle(
-                                      Theme.of(context).brightness))),
-                        ]),
-                      ),
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (v) {
-                      if (v == 'refresh') repo.load();
-                      if (v == 'about') {
-                        showAboutDialog(
-                          context: context,
-                          applicationName: 'Gallery',
-                          applicationVersion: '1.0.0',
-                          children: const [
-                            Text('Smart tags, people and places are detected on-device. '
-                                'Nothing is uploaded.'),
-                          ],
-                        );
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'refresh', child: Text('Refresh library')),
-                      PopupMenuItem(value: 'about', child: Text('About')),
-                    ],
-                  ),
-                ]),
-              ),
-
-              // Bottom navigation
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Glass(
-                  radius: 0,
-                  padding: EdgeInsets.only(bottom: pad.bottom, top: 6),
-                  child: SizedBox(
-                    height: 64,
-                    child: Row(children: [
-                      _NavItem(
-                          icon: Icons.photo_outlined,
-                          activeIcon: Icons.photo,
-                          label: 'Photos',
-                          active: _tab == 0,
-                          onTap: () => setState(() => _tab = 0)),
-                      _NavItem(
-                          icon: Icons.photo_album_outlined,
-                          activeIcon: Icons.photo_album,
-                          label: 'Albums',
-                          active: _tab == 1,
-                          onTap: () => setState(() => _tab = 1)),
-                      _NavItem(
-                          icon: Icons.explore_outlined,
-                          activeIcon: Icons.explore,
-                          label: 'Explore',
-                          active: _tab == 2,
-                          onTap: () => setState(() => _tab = 2)),
-                    ]),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  void initState() {
+    super.initState();
+    _loadImages();
   }
-}
 
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  final IconData icon, activeIcon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
+  Future<void> _loadImages() async {
+    final images = await _repository.getRecentImages();
+    if (mounted) {
+      setState(() {
+        _images = images;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final b = Theme.of(context).brightness;
-    final color = active
-        ? (b == Brightness.light ? const Color(0xFF2B2D42) : Colors.white)
-        : GalleryColors.subtle(b);
-    return Expanded(
-      child: InkResponse(
-        onTap: onTap,
-        radius: 40,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              child: Icon(active ? activeIcon : icon,
-                  key: ValueKey(active), color: color, size: 26),
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Gallery')),
+      body: _images.isEmpty 
+        ? const Center(child: Text('No images found or permission denied.'))
+        : GridView.builder(
+            padding: const EdgeInsets.all(2),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 2,
+              mainAxisSpacing: 2,
             ),
-            const SizedBox(height: 3),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 12,
-                    color: color,
-                    fontWeight: active ? FontWeight.w600 : FontWeight.w400)),
-          ],
-        ),
-      ),
+            itemCount: _images.length,
+            itemBuilder: (context, index) {
+              return FutureBuilder<Uint8List?>(
+                future: _images[index].thumbnailDataWithSize(const ThumbnailSize(200, 200)),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data != null) {
+                    return Image.memory(snapshot.data!, fit: BoxFit.cover);
+                  }
+                  return const Center(child: CircularProgressIndicator());
+                },
+              );
+            },
+          ),
     );
   }
 }

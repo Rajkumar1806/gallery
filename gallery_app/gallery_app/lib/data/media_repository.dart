@@ -1,24 +1,24 @@
-import 'dart:async';
-
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:photo_manager/photo_manager.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'memories.dart';
-import 'smart_scanner.dart';
-
-/// A device folder such as Camera, Screenshots, WhatsApp Images …
-class AlbumInfo {
-  AlbumInfo({required this.id, required this.name, required this.assets});
-
-  final String id;
-  final String name;
-  final List<AssetEntity> assets;
-
-  int get count => assets.length;
-  AssetEntity? get cover => assets.isEmpty ? null : assets.first;
+class MediaRepository {
+  Future<List<AssetEntity>> getRecentImages({int page = 0, int size = 50}) async {
+    final PermissionState ps = await PhotoManager.requestPermissionExtend();
+    if (ps.isAuth) {
+      final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
+        type: RequestType.image,
+        hasAll: true,
+      );
+      
+      if (paths.isNotEmpty) {
+        final List<AssetEntity> media = await paths[0].getAssetListPaged(
+          page: page,
+          size: size,
+        );
+        return media;
+      }
+    }
+    return [];
+  }
 }
 
 /// Virtual collections shown under "Media types".
