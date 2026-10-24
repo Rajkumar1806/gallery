@@ -29,11 +29,13 @@ jobs:
           cache: true
 
       - name: Show Flutter version
+        working-directory: gallery_app/gallery_app
         run: flutter --version
 
       # Creates the missing Android Gradle files, then restores our manifest
       # (with the photo/video permissions) in case Flutter replaced it.
       - name: Generate Android project files
+        working-directory: gallery_app/gallery_app
         run: |
           cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
           flutter create --platforms=android --org com.coresolutions .
@@ -42,6 +44,7 @@ jobs:
 
       # ML Kit and photo_manager need a minimum Android 7.0 (API 24).
       - name: Set minSdk to 24
+        working-directory: gallery_app/gallery_app
         run: |
           f=$(ls android/app/build.gradle.kts android/app/build.gradle 2>/dev/null | head -n1)
           echo "Patching $f"
@@ -49,14 +52,16 @@ jobs:
           grep -n "minSdk" "$f"
 
       - name: Install dependencies
+        working-directory: gallery_app/gallery_app
         run: flutter pub get
 
       - name: Build release APK
+        working-directory: gallery_app/gallery_app
         run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: gallery-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: gallery_app/gallery_app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
