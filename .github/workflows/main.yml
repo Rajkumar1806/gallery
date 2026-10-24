@@ -35,8 +35,8 @@ jobs:
       # (with the photo/video permissions) in case Flutter replaced it.
       - name: Generate Android project files
         run: |
-          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
-          flutter create --platforms=android --org com.coresolutions .
+          cp gallery_app/gallery_app/android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
+          flutter create --platforms=android --org com.customGallery .
           cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           grep -q READ_MEDIA_IMAGES android/app/src/main/AndroidManifest.xml && echo "Manifest OK"
 
