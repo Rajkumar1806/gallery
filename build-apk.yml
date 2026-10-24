@@ -29,22 +29,34 @@ jobs:
           cache: true
 
       - name: Show Flutter version
-        working-directory: gallery_app/gallery_app
         run: flutter --version
 
-      # Creates the missing Android Gradle files, then restores our manifest
-      # (with the photo/video permissions) in case Flutter replaced it.
-      - name: Generate Android project files
-        working-directory: gallery_app/gallery_app
+      # Fail early (with a clear message) if the gallery code didn't get uploaded.
+      - name: Check gallery source files exist
         run: |
-          cp android/app/src/main/AndroidManifest.xml /tmp/AndroidManifest.xml
+          for f in lib/main.dart lib/screens/home_shell.dart lib/data/media_repository.dart pubspec.yaml android/app/src/main/AndroidManifest.xml; do
+            if [ ! -f "$f" ]; then echo "::error::Missing $f - upload the whole gallery_app folder (lib/ and android/ included)"; exit 1; fi
+          done
+          grep -q "PermissionGate" lib/main.dart || { echo "::error::lib/main.dart is not the gallery version"; exit 1; }
+          echo "Gallery source found"
+
+      # Creates the missing Android Gradle files, then puts OUR files back
+      # (flutter create writes a default counter app / pubspec / manifest).
+      - name: Generate Android project files
+        run: |
+          mkdir -p /tmp/keep
+          cp -r lib /tmp/keep/lib
+          cp pubspec.yaml /tmp/keep/pubspec.yaml
+          cp gallery_app/gallery_app/android/app/src/main/AndroidManifest.xml /tmp/keep/AndroidManifest.xml
           flutter create --platforms=android --org com.coresolutions .
-          cp /tmp/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          rm -rf lib && cp -r /tmp/keep/lib lib
+          cp /tmp/keep/pubspec.yaml pubspec.yaml
+          cp /tmp/keep/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          grep -q PermissionGate lib/main.dart && echo "lib/main.dart is the gallery app"
           grep -q READ_MEDIA_IMAGES android/app/src/main/AndroidManifest.xml && echo "Manifest OK"
 
       # ML Kit and photo_manager need a minimum Android 7.0 (API 24).
       - name: Set minSdk to 24
-        working-directory: gallery_app/gallery_app
         run: |
           f=$(ls android/app/build.gradle.kts android/app/build.gradle 2>/dev/null | head -n1)
           echo "Patching $f"
@@ -52,16 +64,14 @@ jobs:
           grep -n "minSdk" "$f"
 
       - name: Install dependencies
-        working-directory: gallery_app/gallery_app
         run: flutter pub get
 
       - name: Build release APK
-        working-directory: gallery_app/gallery_app
         run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: gallery-apk
-          path: gallery_app/gallery_app/build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
