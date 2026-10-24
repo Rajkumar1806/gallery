@@ -1,0 +1,38 @@
+name: gallery_app
+description: A ColorOS-style photo gallery for Android built with Flutter.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Device media access (photos, videos, albums)
+  photo_manager: ^3.6.0
+  photo_manager_image_provider: ^2.1.0
+
+  # Viewer
+  photo_view: ^0.15.0
+  video_player: ^2.9.0
+  share_plus: ^10.1.0
+
+  # On-device smart tags + face detection (no cloud)
+  google_mlkit_image_labeling: ">=0.13.0 <1.0.0"
+  google_mlkit_face_detection: ">=0.12.0 <1.0.0"
+
+  # Places (reverse geocoding of photo GPS)
+  geocoding: ^3.0.0
+
+  # Local caches / favourites
+  shared_preferences: ^2.3.0
+  path_provider: ^2.1.0
+  intl: ">=0.19.0 <1.0.0"
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
